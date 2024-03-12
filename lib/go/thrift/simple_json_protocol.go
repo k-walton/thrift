@@ -943,7 +943,6 @@ func (p *TSimpleJSONProtocol) ParseStringBody() (string, error) {
 	return v, nil
 }
 
-// this is called when we know their is an escaped quote before it '\”
 func (p *TSimpleJSONProtocol) ParseQuotedStringBody() (string, error) {
 	var sb strings.Builder
 
