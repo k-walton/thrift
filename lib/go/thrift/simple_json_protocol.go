@@ -923,21 +923,7 @@ func (p *TSimpleJSONProtocol) ParseStringBody() (string, error) {
 	if err != nil {
 		return "", NewTProtocolException(err)
 	}
-	l := len(line)
-
-	// count number of escapes to see if we need to keep going
-	//start routine to find if we ended in a quote that was escaped
-	//specifically the quote will have an odd number of backslashes
-	//directly preceding it
-	i := 1
-	for ; i < l; i++ {
-		if line[l-i-1] != '\\' {
-			break
-		}
-	}
-	if i&0x01 == 1 {
-		//end routine to find if we ended in a quote that was escaped
-		//this clause is true if we didn't end in a quote that was escaped
+	if endsWithoutEscapedQuote(line) {
 		v, ok := jsonUnquote(string(JSON_QUOTE) + line)
 		if !ok {
 			return "", NewTProtocolException(err)
@@ -967,25 +953,21 @@ func (p *TSimpleJSONProtocol) ParseQuotedStringBody() (string, error) {
 			return "", NewTProtocolException(err)
 		}
 		sb.WriteString(line)
-		l := len(line)
-
-		// count number of escapes to see if we need to keep going
-		//start routine to find if we ended in a quote that was escaped
-		//specifically find if the quote will have an odd number of backslashes
-		//directly preceding it
-		i := 1
-		for ; i < l; i++ {
-			if line[l-i-1] != '\\' {
-				break
-			}
-		}
-
-		if i&0x01 == 1 {
-			//end routine to find if we ended in a quote that was escaped
-			//this clause is true if we didn't end in a quote that was escaped
+		if endsWithoutEscapedQuote(line) {
 			return sb.String(), nil
 		}
 	}
+}
+
+func endsWithoutEscapedQuote(s string) bool {
+	l := len(s)
+	i := 1
+	for ; i < l; i++ {
+		if s[l-i-1] != '\\' {
+			break
+		}
+	}
+	return i&0x01 == 1
 }
 
 func (p *TSimpleJSONProtocol) ParseBase64EncodedBody() ([]byte, error) {
