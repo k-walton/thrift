@@ -967,14 +967,7 @@ func (p *TSimpleJSONProtocol) ParseQuotedStringBody() (string, error) {
 			return "", NewTProtocolException(err)
 		}
 		sb.WriteString(line)
-
 		l := len(line)
-
-		readableRunes := make([]string, 0)
-		for _, r := range line {
-			readableRunes = append(readableRunes, string(r))
-		}
-		fmt.Printf("%v\n", readableRunes)
 
 		// count number of escapes to see if we need to keep going
 		//start routine to find if we ended in a quote that was escaped
