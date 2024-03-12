@@ -30,6 +30,7 @@ import (
 	"io"
 	"math"
 	"strconv"
+	"strings"
 )
 
 type _ParseContext int
@@ -923,7 +924,11 @@ func (p *TSimpleJSONProtocol) ParseStringBody() (string, error) {
 		return "", NewTProtocolException(err)
 	}
 	l := len(line)
+
 	// count number of escapes to see if we need to keep going
+	//start routine to find if we ended in a quote that was escaped
+	//specifically the quote will have an odd number of backslashes
+	//directly preceding it
 	i := 1
 	for ; i < l; i++ {
 		if line[l-i-1] != '\\' {
@@ -931,6 +936,8 @@ func (p *TSimpleJSONProtocol) ParseStringBody() (string, error) {
 		}
 	}
 	if i&0x01 == 1 {
+		//end routine to find if we ended in a quote that was escaped
+		//this clause is true if we didn't end in a quote that was escaped
 		v, ok := jsonUnquote(string(JSON_QUOTE) + line)
 		if !ok {
 			return "", NewTProtocolException(err)
@@ -950,28 +957,42 @@ func (p *TSimpleJSONProtocol) ParseStringBody() (string, error) {
 	return v, nil
 }
 
+// this is called when we know their is an escaped quote before it '\”
 func (p *TSimpleJSONProtocol) ParseQuotedStringBody() (string, error) {
-	line, err := p.reader.ReadString(JSON_QUOTE)
-	if err != nil {
-		return "", NewTProtocolException(err)
-	}
-	l := len(line)
-	// count number of escapes to see if we need to keep going
-	i := 1
-	for ; i < l; i++ {
-		if line[l-i-1] != '\\' {
-			break
+	var sb strings.Builder
+
+	for {
+		line, err := p.reader.ReadString(JSON_QUOTE)
+		if err != nil {
+			return "", NewTProtocolException(err)
+		}
+		sb.WriteString(line)
+
+		l := len(line)
+
+		readableRunes := make([]string, 0)
+		for _, r := range line {
+			readableRunes = append(readableRunes, string(r))
+		}
+		fmt.Printf("%v\n", readableRunes)
+
+		// count number of escapes to see if we need to keep going
+		//start routine to find if we ended in a quote that was escaped
+		//specifically find if the quote will have an odd number of backslashes
+		//directly preceding it
+		i := 1
+		for ; i < l; i++ {
+			if line[l-i-1] != '\\' {
+				break
+			}
+		}
+
+		if i&0x01 == 1 {
+			//end routine to find if we ended in a quote that was escaped
+			//this clause is true if we didn't end in a quote that was escaped
+			return sb.String(), nil
 		}
 	}
-	if i&0x01 == 1 {
-		return line, nil
-	}
-	s, err := p.ParseQuotedStringBody()
-	if err != nil {
-		return "", NewTProtocolException(err)
-	}
-	v := line + s
-	return v, nil
 }
 
 func (p *TSimpleJSONProtocol) ParseBase64EncodedBody() ([]byte, error) {
